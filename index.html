@@ -39,7 +39,7 @@
 <body>
 <div class="wrap">
   <h1>Simulador Crédito Automóvel (Usados) – 60 a 120 meses</h1>
-  <p class="lead">TAN <b>atualizada</b> (editável), despesas admin. €350, comissão de abertura (fixa ou %), Imposto do Selo: <b>0,6%</b> capital + <b>4%</b> juros/comissões. Com e sem entrada. Perfis abaixo refletem médias praticadas por financiadoras automóvel a partir de <b>fev/2025</b> — confirme sempre junto da entidade.</p>
+  <p class="lead">TAN <b>atualizada</b> (editável), despesas admin. €350, comissão de abertura (fixa ou %), Imposto do Selo: <b>0,6%</b> capital + <b>4%</b> juros/comissões. Com e sem entrada. Perfis abaixo refletem médias praticadas por financiadoras automóvel a partir de <b id="refLead">—</b> — confirme sempre junto da entidade.</p>
 
   <div class="split">
     <div class="card">
@@ -47,7 +47,7 @@
         <div>
           <label>Perfil da financeira</label>
           <select id="perfil"></select>
-          <small class="note" id="perfilInfo">Dados de referência (fev/2025).</small>
+          <small class="note" id="perfilInfo">Dados de referência (—).</small>
         </div>
         <div>
           <label>Preço veículo (€) <span class="pill">opcional</span></label>
@@ -147,7 +147,7 @@
   </div>
 
   <div class="card" style="margin-top:16px">
-    <h3 style="margin:0 0 8px">Taxas de referência por financeira (fev/2025)</h3>
+    <h3 style="margin:0 0 8px">Taxas de referência por financeira (<span id="refTabela">—</span>)</h3>
     <p class="note" style="margin:0 0 10px">Valores indicativos para crédito automóvel usado. Confirme custos finais e campanhas vigentes junto da entidade.</p>
     <div class="scroll" style="max-height:260px">
       <table>
@@ -163,7 +163,9 @@
 </div>
 
 <script>
-// Perfis de financeiras (valores indicativos fev/2025)
+const referenciaTaxas = 'fev/2025';
+
+// Perfis de financeiras (valores indicativos)
 const perfisFin = [
   { id:'custom', nome:'Personalizar (editar campos)', tan:9.5, despAdmin:350, tipoCom:'fixa', valorCom:300, nota:'Use seus valores' },
   { id:'santander', nome:'Santander Consumer', tan:8.95, despAdmin:320, tipoCom:'fixa', valorCom:280, nota:'Campanhas usados sem entrada obrigatória' },
@@ -203,6 +205,15 @@ function val(id){ const e=el(id); return e? parseFloat(e.value.replace(',', '.')
 function set(id,v){ const e=el(id); if(e) e.value=v; }
 function setText(id,t){ const e=el(id); if(e) e.textContent=t; }
 
+function atualizarReferencias(){
+  setText('refLead', referenciaTaxas);
+  setText('refTabela', referenciaTaxas);
+  const info = el('perfilInfo');
+  if(info && info.textContent.includes('(—)')){
+    info.textContent = `Dados de referência (${referenciaTaxas}).`;
+  }
+}
+
 function preencherPerfis(){
   const sel = el('perfil');
   if(!sel) return;
@@ -223,7 +234,7 @@ function preencherPerfis(){
 
 function aplicarPerfil(id){
   const perfil = perfisFin.find(p=>p.id===id);
-  const info = perfil ? `TAN ${perfil.tan}% · Despesas ${formatEUR(perfil.despAdmin)} · Comissão ${perfil.tipoCom==='percent'? pct(perfil.valorCom/100) : formatEUR(perfil.valorCom)}` : 'Personalize os campos';
+  const info = perfil ? `TAN ${perfil.tan}% · Despesas ${formatEUR(perfil.despAdmin)} · Comissão ${perfil.tipoCom==='percent'? pct(perfil.valorCom/100) : formatEUR(perfil.valorCom)}${perfil.nota ? ' · ' + perfil.nota : ''}` : 'Personalize os campos';
   setText('perfilInfo', info + ' — ajuste se necessário.');
   if(!perfil) return;
   set('tan', perfil.tan);
@@ -353,6 +364,7 @@ function limpar(){
   const e=el(id); if(e){ e.addEventListener('change', ()=>calc()); e.addEventListener('keyup', ()=>calc()); }
 });
 
+atualizarReferencias();
 preencherPerfis();
 const perfilEl = el('perfil');
 if(perfilEl){
