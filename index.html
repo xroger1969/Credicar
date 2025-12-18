@@ -39,11 +39,16 @@
 <body>
 <div class="wrap">
   <h1>Simulador Crédito Automóvel (Usados) – 60 a 120 meses</h1>
-  <p class="lead">TAN <b>9,5%</b> (editável), despesas admin. €350, comissão de abertura (fixa ou %), Imposto do Selo: <b>0,6%</b> capital + <b>4%</b> juros/comissões. Com e sem entrada.</p>
+  <p class="lead">TAN <b>atualizada</b> (editável), despesas admin. (ex.: €100), comissão de abertura (fixa ou % – ex.: €150), Imposto do Selo: <b>0,6%</b> capital + <b>4%</b> juros/comissões. Com e sem entrada. Perfis abaixo refletem médias praticadas por financiadoras automóvel a partir de <b id="refLead">—</b> — confirme sempre junto da entidade.</p>
 
   <div class="split">
     <div class="card">
       <div class="grid g-3">
+        <div>
+          <label>Perfil da financeira</label>
+          <select id="perfil"></select>
+          <small class="note" id="perfilInfo">Dados de referência (—).</small>
+        </div>
         <div>
           <label>Preço veículo (€) <span class="pill">opcional</span></label>
           <input type="number" id="preco" min="0" step="100" placeholder="ex.: 14500" />
@@ -54,23 +59,23 @@
         </div>
         <div>
           <label>Montante a financiar (€)</label>
-          <input type="number" id="montante" min="0" max="70000" step="100" value="10000" />
+          <input type="number" id="montante" min="0" max="70000" step="100" value="24500" />
         </div>
 
         <div>
           <label>Prazo (meses)</label>
           <select id="prazo">
-            <option>60</option><option>72</option><option selected>84</option>
-            <option>96</option><option>108</option><option>120</option>
+            <option>60</option><option>72</option><option>84</option>
+            <option>96</option><option>108</option><option selected>120</option>
           </select>
         </div>
         <div>
           <label>TAN anual (%)</label>
-          <input type="number" id="tan" min="0" step="0.01" value="9.5" />
+          <input type="number" id="tan" min="0" step="0.01" value="9.95" />
         </div>
         <div>
           <label>Despesas administrativas (€)</label>
-          <input type="number" id="despAdmin" min="0" step="1" value="350" />
+          <input type="number" id="despAdmin" min="0" step="1" value="100" />
         </div>
 
         <div>
@@ -82,13 +87,13 @@
         </div>
         <div>
           <label>Comissão de abertura (valor)</label>
-          <input type="number" id="valorCom" min="0" step="0.01" value="300" />
+          <input type="number" id="valorCom" min="0" step="0.01" value="150" />
         </div>
         <div>
           <label>Financiar comissões/despesas?</label>
           <select id="financiar">
-            <option value="nao" selected>Não (pagas no início)</option>
-            <option value="sim">Sim (somadas ao capital)</option>
+            <option value="nao">Não (pagas no início)</option>
+            <option value="sim" selected>Sim (somadas ao capital)</option>
           </select>
         </div>
       </div>
@@ -140,9 +145,37 @@
       </table>
     </div>
   </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3 style="margin:0 0 8px">Taxas de referência por financeira (<span id="refTabela">—</span>)</h3>
+    <p class="note" style="margin:0 0 10px">Valores indicativos para crédito automóvel usado. Confirme custos finais e campanhas vigentes junto da entidade.</p>
+    <div class="scroll" style="max-height:260px">
+      <table>
+        <thead>
+          <tr>
+            <th>Financeira</th><th>TAN anual</th><th>Desp. admin.</th><th>Com. abertura</th><th>Notas</th>
+          </tr>
+        </thead>
+        <tbody id="perfisTabela"><tr><td colspan="5" style="text-align:center; padding:12px">—</td></tr></tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <script>
+const referenciaTaxas = 'fev/2025';
+
+// Perfis de financeiras (valores indicativos)
+const perfisFin = [
+  { id:'exemplo', nome:'Automóvel usado · 120m (exemplo)', tan:9.95, despAdmin:100, tipoCom:'fixa', valorCom:150, financiar:'sim', montante:24500, prazo:120, nota:'Custos financiados · prestação ~328,51 €' },
+  { id:'custom', nome:'Personalizar (editar campos)', tan:9.5, despAdmin:350, tipoCom:'fixa', valorCom:300, nota:'Use seus valores' },
+  { id:'santander', nome:'Santander Consumer', tan:8.95, despAdmin:320, tipoCom:'fixa', valorCom:280, nota:'Campanhas usados sem entrada obrigatória' },
+  { id:'bbva', nome:'BBVA Consumer', tan:8.7, despAdmin:325, tipoCom:'percent', valorCom:2.5, nota:'Comissão percentual sobre montante' },
+  { id:'cetelem', nome:'Cetelem', tan:9.1, despAdmin:340, tipoCom:'fixa', valorCom:295, nota:'Processo digital com com. fixa' },
+  { id:'cofidis', nome:'Cofidis', tan:9.25, despAdmin:300, tipoCom:'fixa', valorCom:250, nota:'Inclui custos de dossier reduzidos' },
+  { id:'banif', nome:'Banco Invest (Banif)', tan:9.6, despAdmin:360, tipoCom:'fixa', valorCom:300, nota:'Perfil conservador para usados >8 anos' },
+];
+
 // Format a number to Euro currency (Portuguese locale)
 const formatEUR = n => (isFinite(n) ? n : 0).toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' });
 const pct = x => (isFinite(x) ? (100 * x).toFixed(2) + ' %' : '—');
@@ -172,6 +205,48 @@ function el(id){ return document.getElementById(id); }
 function val(id){ const e=el(id); return e? parseFloat(e.value.replace(',', '.')) : NaN; }
 function set(id,v){ const e=el(id); if(e) e.value=v; }
 function setText(id,t){ const e=el(id); if(e) e.textContent=t; }
+
+function atualizarReferencias(){
+  setText('refLead', referenciaTaxas);
+  setText('refTabela', referenciaTaxas);
+  const info = el('perfilInfo');
+  if(info && info.textContent.includes('(—)')){
+    info.textContent = `Dados de referência (${referenciaTaxas}). Exemplo carregado: €24.500 a 120 meses com custos financiados.`;
+  }
+}
+
+function preencherPerfis(){
+  const sel = el('perfil');
+  if(!sel) return;
+  sel.innerHTML = perfisFin.map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
+  sel.value = 'exemplo';
+  const tbody = el('perfisTabela');
+  if(tbody){
+    tbody.innerHTML = perfisFin.filter(p=>p.id!=='custom').map(p=>`
+      <tr>
+        <td>${p.nome}</td>
+        <td>${pct(p.tan/100)}</td>
+        <td>${formatEUR(p.despAdmin)}</td>
+        <td>${p.tipoCom==='percent' ? pct(p.valorCom/100) : formatEUR(p.valorCom)}</td>
+        <td>${p.nota}</td>
+      </tr>
+    `).join('');
+  }
+}
+
+function aplicarPerfil(id){
+  const perfil = perfisFin.find(p=>p.id===id);
+  const info = perfil ? `TAN ${perfil.tan}% · Despesas ${formatEUR(perfil.despAdmin)} · Comissão ${perfil.tipoCom==='percent'? pct(perfil.valorCom/100) : formatEUR(perfil.valorCom)}${perfil.financiar ? ' · Financia upfront' : ''}${perfil.nota ? ' · ' + perfil.nota : ''}` : 'Personalize os campos';
+  setText('perfilInfo', info + ' — ajuste se necessário.');
+  if(!perfil) return;
+  set('tan', perfil.tan);
+  set('despAdmin', perfil.despAdmin);
+  set('tipoCom', perfil.tipoCom);
+  set('valorCom', perfil.valorCom);
+  if(perfil.financiar) set('financiar', perfil.financiar);
+  if(perfil.montante) set('montante', perfil.montante);
+  if(perfil.prazo) set('prazo', perfil.prazo);
+}
 
 function calc(){
   // Montante: se houver preço+entrada, calculo; senão uso o campo montante
@@ -282,11 +357,12 @@ function csv(){
 
 // limpar
 function limpar(){
-  ['preco','entrada','montante','tan','despAdmin','valorCom'].forEach(id=>set(id,''));
-  set('montante','10000'); set('prazo','84'); set('tan','9.5'); set('despAdmin','350'); set('tipoCom','fixa'); set('valorCom','300'); set('financiar','nao');
-  document.querySelector('#tabela tbody').innerHTML='<tr><td colspan="6" style="text-align:center; padding:16px">—</td></tr>';
-  ['kPrestacao','kTAEG','kMTIC','kJuros','kIS','kUpfront'].forEach(id=>setText(id,'—'));
-  el('upfrontList').textContent='—'; el('mensaisList').textContent='—'; el('resumoList').textContent='—'; el('aviso').textContent='';
+  ['preco','entrada'].forEach(id=>set(id,''));
+  set('perfil','exemplo');
+  set('montante','24500'); set('prazo','120'); set('financiar','sim');
+  set('tipoCom','fixa'); set('valorCom','150'); set('despAdmin','100'); set('tan','9.95');
+  aplicarPerfil('exemplo');
+  calc();
 }
 
 // recálculo automático ao editar campos
@@ -294,6 +370,13 @@ function limpar(){
   const e=el(id); if(e){ e.addEventListener('change', ()=>calc()); e.addEventListener('keyup', ()=>calc()); }
 });
 
+atualizarReferencias();
+preencherPerfis();
+const perfilEl = el('perfil');
+if(perfilEl){
+  perfilEl.addEventListener('change', ()=>{ aplicarPerfil(perfilEl.value); calc(); });
+  aplicarPerfil(perfilEl.value);
+}
 calc();
 </script>
 </body>
